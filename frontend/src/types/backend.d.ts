@@ -113,3 +113,41 @@ export interface IResume {
     createdAt?: string;
     updatedAt?: string;
 }
+
+export interface IPost {
+    _id?: string;
+    content: string;
+    images?: string[];
+    author: {
+        _id: string;
+        name: string;
+        email: string;
+        avatar?: string;
+    };
+    tags?: string[];
+    likes: IUser[];
+    comments: IComment[];
+    isDeleted?: boolean;
+    deletedAt?: boolean | null;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface IComment {
+    _id?: string;
+    content: string;
+    author: {
+        _id: string;
+        name: string;
+        email: string;
+        avatar?: string;
+    };
+    postId: string;
+    parentCommentId?: string;
+    replies: IComment[];
+    likes: string[];
+    isDeleted?: boolean;
+    deletedAt?: boolean | null;
+    createdAt?: string;
+    updatedAt?: string;
+}

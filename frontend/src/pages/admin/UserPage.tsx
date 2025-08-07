@@ -5,6 +5,9 @@ import { useEffect, useState } from "react"
 import { useAppDispatch, useAppSelector } from "../../hooks/reduxHooks";
 import { toggleStatusUser, fetchUsers } from "../../redux/slice/userSlice";
 import Modal from "../../components/common/Modal";
+import { useSearchParams } from "react-router-dom";
+import useDebounce from "../../hooks/useDebounce";
+import { Pagination } from 'antd';
 
 // Mock data - replace with your Redux selectors
 // const mockUsers = [
@@ -68,33 +71,50 @@ const UserPage: React.FC = () => {
   // const [users, setUsers] = useState(mockUsers)
 
   const dispatch = useAppDispatch();
-  const { users, total } = useAppSelector(state => state.user);
+  const { users, total, pages, loading } = useAppSelector(state => state.user);
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedRole, setSelectedRole] = useState("all")
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<any | null>({})
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(5)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentPage, setCurrentPage] = useState(Number(searchParams.get("page")) || 1);
+  const [limit, setLimit] = useState(Number(searchParams.get("limit")) || 5);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [selectedRole, setSelectedRole] = useState(searchParams.get("role") || "all");
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get("status") || "all");
+  const debouncedSearch = useDebounce(searchTerm, 700);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any | null>({});
 
-  // Mock Redux data
-  // const totalUsers = users.length
-
+  // Sync state to URL (only when debouncedSearch changes)
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (selectedRole !== "all") params.set("role", selectedRole);
+    if (selectedStatus !== "all") params.set("status", selectedStatus);
+    if (currentPage !== 1) params.set("page", String(currentPage));
+    setSearchParams(params);
+  }, [debouncedSearch, selectedRole, selectedStatus, currentPage, setSearchParams]);
 
-    // Mock dispatch call
-    dispatch(fetchUsers({ page: 1, limit: 20 }));
+  // Sync page from URL
+  useEffect(() => {
+    const pageParam = parseInt(searchParams.get("page") || currentPage.toString(), 5);
+    if (pageParam !== currentPage) {
+      setCurrentPage(pageParam);
+    }
+    // eslint-disable-next-line
+  }, [searchParams]);
 
-    return () => clearTimeout(timer)
-  }, [])
+  // Fetch users when filters or page change (use debouncedSearch)
+  useEffect(() => {
+    console.log(currentPage, limit);
+    dispatch(fetchUsers({
+      page: currentPage,
+      limit: limit,
+      search: debouncedSearch,
+      role: selectedRole !== 'all' ? selectedRole : '',
+      status: selectedStatus !== 'all' ? selectedStatus : '',
+    }));
+  }, [dispatch, currentPage, limit, debouncedSearch, selectedRole, selectedStatus]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -124,58 +144,55 @@ const UserPage: React.FC = () => {
   }
 
   // Filter users based on search and filters
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = selectedRole === "all" || user.role === selectedRole
-    const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "active" && user.isDeleted) ||
-      (selectedStatus === "inactive" && !user.isDeleted)
+  // const filteredUsers = users.filter((user) => {
+  //   const matchesSearch =
+  //     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  //   const matchesRole = selectedRole === "all" || user.role === selectedRole
+  //   const matchesStatus =
+  //     selectedStatus === "all" ||
+  //     (selectedStatus === "active" && user.isDeleted) ||
+  //     (selectedStatus === "inactive" && !user.isDeleted)
 
-    return matchesSearch && matchesRole && matchesStatus
-  })
+  //   return matchesSearch && matchesRole && matchesStatus
+  // })
 
   // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
+  // const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  // const startIndex = (currentPage - 1) * itemsPerPage
+  // const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedUsers(paginatedUsers.map((user) => user._id))
+      setSelectedUsers(users.map((user) => user._id));
     } else {
-      setSelectedUsers([])
+      setSelectedUsers([]);
     }
-  }
+  };
 
   const handleSelectUser = (userId: string, checked: boolean) => {
     if (checked) {
-      setSelectedUsers([...selectedUsers, userId])
+      setSelectedUsers([...selectedUsers, userId]);
     } else {
-      setSelectedUsers(selectedUsers.filter((id) => id !== userId))
+      setSelectedUsers(selectedUsers.filter((id) => id !== userId));
     }
-  }
+  };
 
   const handleDeleteUser = (userId: string, isDeleted: boolean) => {
-    setUserToDelete({ _id: userId, isDeleted })
-    setShowDeleteModal(true)
-  }
+    setUserToDelete({ _id: userId, isDeleted });
+    setShowDeleteModal(true);
+  };
 
   const confirmDelete = () => {
     if (userToDelete) {
-      // setUsers(users.filter((user) => user._id !== userToDelete))
-      // setUserToDelete(null)
-      dispatch(toggleStatusUser(userToDelete._id))
-      setShowDeleteModal(false)
+      dispatch(toggleStatusUser(userToDelete._id));
+      setShowDeleteModal(false);
     }
-  }
+  };
 
   const handleBulkDelete = () => {
-    // setUsers(users.filter((user) => !selectedUsers.includes(user._id)))
-    setSelectedUsers([])
-  }
+    setSelectedUsers([]);
+  };
 
   const StatCard = ({
     title,
@@ -210,26 +227,30 @@ const UserPage: React.FC = () => {
     </div>
   )
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="animate-pulse flex items-center">
-                <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
-                <div className="ml-4 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded w-20"></div>
-                  <div className="h-6 bg-gray-200 rounded w-12"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <LoadingSkeleton />
-      </div>
-    )
-  }
+  // if (loading) {
+  //   return (
+  //     <div className="space-y-6">
+  //       <div>
+  //         <h1 className="text-3xl font-bold text-gray-900">Quản lý người dùng</h1>
+  //         <p className="text-gray-600 mt-2">Quản lý tài khoản người dùng trong hệ thống</p>
+  //       </div>
+  //       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  //         {[1, 2, 3].map((i) => (
+  //           <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+  //             <div className="animate-pulse flex items-center">
+  //               <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+  //               <div className="ml-4 space-y-2">
+  //                 <div className="h-4 bg-gray-200 rounded w-20"></div>
+  //                 <div className="h-6 bg-gray-200 rounded w-12"></div>
+  //               </div>
+  //             </div>
+  //           </div>
+  //         ))}
+  //       </div>
+  //       <LoadingSkeleton />
+  //     </div>
+  //   )
+  // }
 
   return (
     <div className="space-y-6">
@@ -303,7 +324,6 @@ const UserPage: React.FC = () => {
         /> */}
       </div>
 
-      {/* Main Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {/* Header with Search and Filters */}
         <div className="p-6 border-b border-gray-100">
@@ -365,167 +385,173 @@ const UserPage: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {/* Bulk Actions */}
-          {selectedUsers.length > 0 && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-800">Đã chọn {selectedUsers.length} người dùng</span>
-                <div className="space-x-2">
-                  <button
-                    onClick={handleBulkDelete}
-                    className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
-                  >
-                    Xóa đã chọn
-                  </button>
-                  <button
-                    onClick={() => setSelectedUsers([])}
-                    className="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
-                  >
-                    Bỏ chọn
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-4 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.length === paginatedUsers.length && paginatedUsers.length > 0}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Người dùng
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Vai trò
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Lần chỉnh sửa cuối
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Ngày tạo
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {paginatedUsers.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(user._id)}
-                      onChange={(e) => handleSelectUser(user._id, e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(user.role)}`}
-                    >
-                      {getRoleText(user.role)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${!user.isDeleted
-                        ? "bg-green-100 text-green-800 border-green-200"
-                        : "bg-red-100 text-red-800 border-red-200"
-                        }`}
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full mr-2 ${!user.isDeleted ? "bg-green-500" : "bg-red-500"}`}
-                      ></div>
-                      {!user.isDeleted ? "Hoạt động" : "Không hoạt động"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(user.updatedAt)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(user.createdAt)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-3">
-                      {/* <button className="text-blue-600 hover:text-blue-900 font-medium transition-colors">Sửa</button> */}
-                      <button
-                        onClick={() => handleDeleteUser(user._id, user.isDeleted)}
-                        className={`${user.isDeleted ? "text-blue-600" : "text-red-600"} font-medium transition-colors`}
-                      >
-                        {user.isDeleted ? "Kích hoạt" : "Xóa"}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
+        {/* Bulk Actions */}
+        {selectedUsers.length > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-700">
-                Hiển thị {startIndex + 1} đến {Math.min(startIndex + itemsPerPage, filteredUsers.length)} trong tổng số{" "}
-                {filteredUsers.length} kết quả
-              </div>
-              <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-blue-800">Đã chọn {selectedUsers.length} người dùng</span>
+              <div className="space-x-2">
                 <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleBulkDelete}
+                  className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
                 >
-                  Trước
+                  Xóa đã chọn
                 </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                      }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-
                 <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setSelectedUsers([])}
+                  className="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors"
                 >
-                  Sau
+                  Bỏ chọn
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {loading ? <LoadingSkeleton /> : (
+        <>
+          {/* Main Content */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.length === users.length && users.length > 0}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Người dùng
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Vai trò
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Lần chỉnh sửa cuối
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Ngày tạo
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Thao tác
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(user._id)}
+                          onChange={(e) => handleSelectUser(user._id, e.target.checked)}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                            <div className="text-sm text-gray-500">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getRoleBadgeColor(user.role)}`}
+                        >
+                          {getRoleText(user.role)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${!user.isDeleted
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : "bg-red-100 text-red-800 border-red-200"
+                            }`}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full mr-2 ${!user.isDeleted ? "bg-green-500" : "bg-red-500"}`}
+                          ></div>
+                          {!user.isDeleted ? "Hoạt động" : "Không hoạt động"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(user.updatedAt)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{formatDate(user.createdAt)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center space-x-3">
+                          {/* <button className="text-blue-600 hover:text-blue-900 font-medium transition-colors">Sửa</button> */}
+                          <button
+                            onClick={() => handleDeleteUser(user._id, user.isDeleted)}
+                            className={`${user.isDeleted ? "text-blue-600" : "text-red-600"} font-medium transition-colors`}
+                          >
+                            {user.isDeleted ? "Kích hoạt" : "Xóa"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {/* {pages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Hiển thị {(currentPage - 1) * limit + 1} đến {Math.min(currentPage * limit, total)} trong tổng số {total} kết quả
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => dispatch(setCurrentPage(Math.max(1, currentPage - 1)))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Trước
+                    </button>
+
+                    {Array.from({ length: pages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => dispatch(setCurrentPage(page))}
+                        className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => dispatch(setCurrentPage(Math.min(pages, currentPage + 1)))}
+                      disabled={currentPage === pages}
+                      className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Sau
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )} */}
+          </div>
+        </>
+      )}
 
       {/* Add User Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
@@ -692,6 +718,19 @@ const UserPage: React.FC = () => {
           </div>
         </div>
       )} */}
+      <Pagination 
+        align="end"
+        current={currentPage}
+        total={pages * limit}
+        pageSize={limit}
+        showSizeChanger
+        pageSizeOptions={['5', '10', '20', '50']}
+        onChange={(changedPage, changedLimit) => {
+          console.log(changedPage, changedLimit);
+          if(changedPage != currentPage) setCurrentPage(changedPage);
+          if(changedLimit != limit) setLimit(changedLimit);
+        }}
+      />
     </div>
   )
 }

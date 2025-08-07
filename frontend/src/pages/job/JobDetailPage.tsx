@@ -97,7 +97,7 @@ const JobDetailPage: React.FC = () => {
               </div>
             </div>
             {user && currentJob.isActive && (
-              <Button onClick={() => setShowApplyModal(true)} className="px-6 py-3">
+              <Button onClick={() => setShowApplyModal(true)} className="px-6 py-3 text-white">
                 Ứng tuyển ngay
               </Button>
             )}

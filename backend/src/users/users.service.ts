@@ -36,13 +36,50 @@ export class UsersService {
     });
   }
 
-  async findAll(page: number, limit: number) {
-    let filter: any = {
-      $match: { isDeleted: { $in: [false, true] } }
-    };
+  async findAll(page: number, limit: number, search: string, status: string, role: string) {
+    let filter: any[] = [];
+
+    if (search) {
+      filter.push({
+        $match: {
+          $or: [
+            { email: { $regex: search, $options: 'i' } },
+            { name: { $regex: search, $options: 'i' } }
+          ]
+        }
+      });
+    }
+
+    if (role) {
+      filter.push({
+        $match: {
+          role: { $regex: role, $options: 'i' }
+        }
+      });
+    } else {
+      filter.push({
+        $match: { role: { $in: ['USER', 'ADMIN'] } }
+      });
+    }
+
+    if (status) {
+      filter.push({
+        $match: {
+          isDeleted: status === 'active' ? false : true
+        }
+      });
+    } else {
+      filter.push({
+        $match: { isDeleted: { $in: [false, true] } }
+      })
+    }
+
+    const [total, data] = await Promise.all([
+      this.userModel.aggregate(filter),
+      this.userModel.aggregate(filter).skip((page - 1) * limit).limit(limit)
+    ]);
 
     // Validate page and limit
-    const data = await this.userModel.aggregate([filter]);
 
     // const data = await this.userModel
     //   .find(filter)
@@ -54,8 +91,8 @@ export class UsersService {
       meta: {
         currentPage: page,
         pageSize: limit,
-        pages: Math.ceil(data.length / limit),
-        total: data.length,
+        pages: Math.ceil(total.length / limit),
+        total: total.length,
       },
       result: data
     };

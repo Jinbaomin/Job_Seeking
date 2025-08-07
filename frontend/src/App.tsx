@@ -22,6 +22,8 @@ import ChatAI from './pages/AI/ChatAI';
 import ResumeListPage from './pages/resume/ResumeListPage';
 import ResumePage from './pages/admin/ResumePage';
 import AdminPage from './pages/admin/AdminPage';
+import ForumPage from './pages/forum/ForumPage';
+import PostDetailPage from './pages/forum/PostDetailPage';
 
 const AppContent: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -48,6 +50,7 @@ const AppContent: React.FC = () => {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
       <Route element={<ProtectedRoute />}>
+        <Route path="/forum/*" element={<ForumPage />} />
         <Route path="/chat-ai" element={<ChatAI />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/resume" element={<ResumeListPage />} />

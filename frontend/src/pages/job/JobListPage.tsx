@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import MainLayout from '../../components/layout/MainLayout';
 import JobCard from '../../components/job/JobCard';
 import Input from '../../components/common/Input';
@@ -8,12 +8,14 @@ import { useAppDispatch, useAppSelector } from '../../hooks/reduxHooks';
 import { fetchJobs, setCurrentPage } from '../../redux/slice/jobSlice';
 import { callGetCompanies } from '../../config/api';
 import useDebounce from '../../hooks/useDebounce';
+import { Pagination } from 'antd';
 
 const JobListPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { jobs, loading, error, total, currentPage, limit, totalPages } = useAppSelector(state => state.job);
+  const { jobs, loading, error, total, pages } = useAppSelector(state => state.job);
   const [searchParams, setSearchParams] = useSearchParams();
-  
+  const params = useParams();
+
   // Filter state from URL params
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [selectedCompany, setSelectedCompany] = useState(searchParams.get('company') || '');
@@ -24,40 +26,39 @@ const JobListPage: React.FC = () => {
   const [companies, setCompanies] = useState<{ _id: string; name: string }[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get('page') || '1'));
+  const [limit, setLimit] = useState(parseInt(searchParams.get('limit') || '5'));
 
   const debouncedSearchTerm = useDebounce(searchTerm, 700);
 
-  // Update URL params when filters change
-  const updateURLParams = (newParams: Record<string, string | string[]>) => {
-    const params = new URLSearchParams(searchParams);
-    
-    Object.entries(newParams).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        if (value.length > 0) {
-          params.set(key, value.join(','));
-        } else {
-          params.delete(key);
-        }
-      } else {
-        if (value) {
-          params.set(key, value);
-        } else {
-          params.delete(key);
-        }
-      }
-    });
-
-    // Reset to page 1 when filters change
-    params.set('page', '1');
+  // Sync state to URL (like JobPage)
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearchTerm) params.set("search", debouncedSearchTerm);
+    if (selectedCompany) params.set("company", selectedCompany);
+    if (levelFilter) params.set("level", levelFilter);
+    if (selectedSkills.length > 0) params.set("skills", selectedSkills.join(","));
+    if (currentPage !== 1) params.set("page", String(currentPage));
+    if (limit !== 5) params.set("limit", String(limit));
     setSearchParams(params);
-  };
+  }, [debouncedSearchTerm, selectedCompany, levelFilter, selectedSkills, currentPage, limit, setSearchParams]);
+
+  // Sync state from URL (for browser navigation)
+  useEffect(() => {
+    setSearchTerm(searchParams.get("search") || "");
+    setSelectedCompany(searchParams.get("company") || "");
+    setLevelFilter(searchParams.get("level") || "");
+    setSelectedSkills(searchParams.get("skills") ? searchParams.get("skills")!.split(",") : []);
+    setCurrentPage(parseInt(searchParams.get("page") || "1"));
+    setLimit(parseInt(searchParams.get("limit") || "5"));
+  }, [searchParams]);
 
   // Fetch companies and skills on mount
   useEffect(() => {
     callGetCompanies({ page: 1, limit: 100 }).then(res => {
       setCompanies(res.data?.data?.result || []);
     });
-    
+
     // Fetch all skills from jobs
     setSkillsLoading(true);
     dispatch(fetchJobs({ page: 1, limit: 1000 })).then((action: any) => {
@@ -68,31 +69,13 @@ const JobListPage: React.FC = () => {
     });
   }, [dispatch]);
 
-  // Update URL when debounced search term changes
-  useEffect(() => {
-    updateURLParams({ search: debouncedSearchTerm });
-  }, [debouncedSearchTerm]);
-
-  // Update URL when company filter changes
-  useEffect(() => {
-    updateURLParams({ company: selectedCompany });
-  }, [selectedCompany]);
-
-  // Update URL when skills filter changes
-  useEffect(() => {
-    updateURLParams({ skills: selectedSkills });
-  }, [selectedSkills]);
-
-  // Update URL when level filter changes
-  useEffect(() => {
-    updateURLParams({ level: levelFilter });
-  }, [levelFilter]);
-
   // Fetch jobs when filters or page change
   useEffect(() => {
-    const page = parseInt(searchParams.get('page') || '1');
-    dispatch(setCurrentPage(page));
-    
+    let page = parseInt(searchParams.get('page') || '1');
+    let limit = parseInt(searchParams.get('limit') || '5');
+
+    // dispatch(setCurrentPage(page));
+
     dispatch(fetchJobs({
       page,
       limit,
@@ -109,17 +92,20 @@ const JobListPage: React.FC = () => {
   };
 
   const handlePageChange = (page: number) => {
-    const params = new URLSearchParams(searchParams);
-    params.set('page', page.toString());
-    setSearchParams(params);
+    setCurrentPage(page);
   };
 
+  const handlePageSizeChange = (pageSize: number) => {
+    setLimit(pageSize);
+  }
+
   const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedCompany('');
+    setSearchTerm("");
+    setSelectedCompany("");
     setSelectedSkills([]);
-    setLevelFilter('');
-    setSearchParams(new URLSearchParams({ page: '1' }));
+    setLevelFilter("");
+    setCurrentPage(1);
+    setLimit(5);
   };
 
   const handleSkillToggle = (skill: string, checked: boolean) => {
@@ -134,7 +120,7 @@ const JobListPage: React.FC = () => {
     <MainLayout>
       <div className="max-w-6xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-8">Tìm việc làm</h1>
-        
+
         {/* Enhanced Search and Filter */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <form onSubmit={handleSearch}>
@@ -177,7 +163,7 @@ const JobListPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <Button 
+                <Button
                   type="button"
                   onClick={clearFilters}
                   className="w-full bg-gray-500 text-white hover:bg-gray-600"
@@ -199,7 +185,8 @@ const JobListPage: React.FC = () => {
                       <input
                         type="checkbox"
                         value={skill}
-                        checked={selectedSkills.includes(skill)}
+                        // checked={selectedSkills.includes(skill)}
+                        checked={selectedSkills.some(s => s.toLowerCase() === skill.toLowerCase())}
                         onChange={e => handleSkillToggle(skill, e.target.checked)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
@@ -256,11 +243,11 @@ const JobListPage: React.FC = () => {
         ) : jobs.length === 0 ? (
           <div className="text-center py-8">
             <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-4 text-gray-400">
-              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
-              <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
-              <path d="M10 9H8"/>
-              <path d="M16 13H8"/>
-              <path d="M16 17H8"/>
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 9H8" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
             </svg>
             <p className="text-lg font-medium text-gray-500">Không có việc làm nào phù hợp</p>
             <p className="text-sm text-gray-400">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
@@ -274,38 +261,25 @@ const JobListPage: React.FC = () => {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {pages > 1 && (
           <div className="flex items-center justify-between mt-8">
             <div className="text-sm text-gray-700">
               Hiển thị {((currentPage - 1) * limit) + 1} đến {Math.min(currentPage * limit, total)} trong tổng số {total} việc làm
             </div>
-            <div className="flex space-x-2">
-              <Button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-4 py-2"
-              >
-                Trước
-              </Button>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <Button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`px-4 py-2 ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                >
-                  {page}
-                </Button>
-              ))}
-              
-              <Button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2"
-              >
-                Sau
-              </Button>
-            </div>
+            <Pagination
+              align="end"
+              current={currentPage}
+              total={pages * limit}
+              pageSize={limit}
+              showSizeChanger
+              onChange={(page, pageSize) => {
+                console.log(page, pageSize);
+                handlePageChange(page);
+                handlePageSizeChange(pageSize);
+                // if (changedPage != currentPage) setCurrentPage(changedPage);
+                // if (changedLimit != limit) setLimit(changedLimit);
+              }}
+            />
           </div>
         )}
       </div>

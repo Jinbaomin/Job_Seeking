@@ -6,14 +6,22 @@ import { useAppDispatch, useAppSelector } from "../../hooks/reduxHooks"
 import { fetchCompanies, deleteCompany } from "../../redux/slice/companySlice"
 import useDebounce from "../../hooks/useDebounce"
 import Modal from "../../components/common/Modal"
+import CompanyModal from "../../components/admin/CompanyModal"
+import { Pagination } from "antd"
+import { useSearchParams } from "react-router-dom"
 
 const CompanyPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { companies, loading, total, currentPage, limit, totalPages } = useAppSelector(state => state.company);
+  const { companies, loading, deleting, updating, total, totalPages } = useAppSelector(state => state.company);
 
-  // Filter states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  // URL search params
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Filter states - sync with URL
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get("status") || "all");
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
+  const [limit, setLimit] = useState(parseInt(searchParams.get("limit") || "6"));
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,16 +34,27 @@ const CompanyPage: React.FC = () => {
   // Bulk selection
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
 
-  const debounceValue = useDebounce(searchTerm, 1000);
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
 
-  // Fetch companies on mount and when filters/page change
+  // Sync URL params with state
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (currentPage > 1) params.set("page", currentPage.toString());
+    if (limit !== 6) params.set("limit", limit.toString());
+    if (debouncedSearchTerm) params.set("search", debouncedSearchTerm);
+    if (selectedStatus && selectedStatus !== "all") params.set("status", selectedStatus);
+    setSearchParams(params);
+  }, [currentPage, limit, debouncedSearchTerm, selectedStatus, setSearchParams]);
+
+  // Fetch companies when filters/page change
   useEffect(() => {
     dispatch(fetchCompanies({
       page: currentPage,
       limit: limit,
-      search: debounceValue || '',
+      search: debouncedSearchTerm || '',
+      // status: selectedStatus !== "all" ? selectedStatus : undefined,
     }));
-  }, [dispatch, currentPage, limit, debounceValue]);
+  }, [dispatch, currentPage, limit, debouncedSearchTerm, selectedStatus]);
 
   // Pagination
   const paginatedCompanies = companies;
@@ -93,6 +112,12 @@ const CompanyPage: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedStatus("all");
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number, pageSize: number) => {
+    setCurrentPage(page);
+    setLimit(pageSize);
   };
 
   const StatCard = ({
@@ -383,16 +408,14 @@ const CompanyPage: React.FC = () => {
 
                             <div className="flex flex-col items-end space-y-2">
                               <span
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
-                                  company.isDeleted
-                                    ? "bg-red-100 text-red-800 border-red-200"
-                                    : "bg-green-100 text-green-800 border-green-200"
-                                }`}
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${company.isDeleted
+                                  ? "bg-red-100 text-red-800 border-red-200"
+                                  : "bg-green-100 text-green-800 border-green-200"
+                                  }`}
                               >
                                 <div
-                                  className={`w-2 h-2 rounded-full mr-1 ${
-                                    company.isDeleted ? "bg-red-500" : "bg-green-500"
-                                  }`}
+                                  className={`w-2 h-2 rounded-full mr-1 ${company.isDeleted ? "bg-red-500" : "bg-green-500"
+                                    }`}
                                 ></div>
                                 {company.isDeleted ? "Đã xóa" : "Hoạt động"}
                               </span>
@@ -451,43 +474,23 @@ const CompanyPage: React.FC = () => {
               </div>
 
               {/* Pagination */}
-              {totalPages > 1 && (
+              {totalPages > 0 && (
                 <div className="px-6 py-4 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-700">
                       Hiển thị {startIndex + 1} đến {Math.min(startIndex + limit, total)} trong tổng số {total} công ty
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => dispatch(fetchCompanies({ page: Math.max(1, currentPage - 1), limit, search: searchTerm || '' }))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Trước
-                      </button>
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => dispatch(fetchCompanies({ page, limit, search: searchTerm || '' }))}
-                          className={`px-3 py-2 text-sm font-medium rounded-md ${
-                            currentPage === page
-                              ? "bg-blue-600 text-white"
-                              : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-
-                      <button
-                        onClick={() => dispatch(fetchCompanies({ page: Math.min(totalPages, currentPage + 1), limit, search: searchTerm || '' }))}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Sau
-                      </button>
-                    </div>
+                    <Pagination
+                      current={currentPage}
+                      total={total}
+                      pageSize={limit}
+                      showSizeChanger
+                      // showQuickJumper
+                      // showTotal={(total, range) => `${range[0]}-${range[1]} của ${total} công ty`}
+                      onChange={handlePageChange}
+                      onShowSizeChange={handlePageChange}
+                      pageSizeOptions={['6', '12', '18', '24']}
+                    />
                   </div>
                 </div>
               )}
@@ -495,6 +498,18 @@ const CompanyPage: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* <Pagination
+        align="end"
+        current={currentPage}
+        total={totalPages * limit}
+        pageSize={limit}
+        onChange={(changedPage, changedLimit) => {
+          // console.log(changedPage, changedLimit);
+          // if (changedPage != currentPage) setCurrentPage(changedPage);
+          // if (changedLimit != limit) setLimit(changedLimit);
+        }}
+      /> */}
 
       {/* Company Detail Modal */}
       <Modal isOpen={showDetailModal && selectedCompany} onClose={() => setShowDetailModal(false)} maxWidth="max-w-2xl">
@@ -550,16 +565,14 @@ const CompanyPage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Trạng thái:</span>
                   <span
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
-                      selectedCompany?.isDeleted
-                        ? "bg-red-100 text-red-800 border-red-200"
-                        : "bg-green-100 text-green-800 border-green-200"
-                    }`}
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${selectedCompany?.isDeleted
+                      ? "bg-red-100 text-red-800 border-red-200"
+                      : "bg-green-100 text-green-800 border-green-200"
+                      }`}
                   >
                     <div
-                      className={`w-2 h-2 rounded-full mr-1 ${
-                        selectedCompany?.isDeleted ? "bg-red-500" : "bg-green-500"
-                      }`}
+                      className={`w-2 h-2 rounded-full mr-1 ${selectedCompany?.isDeleted ? "bg-red-500" : "bg-green-500"
+                        }`}
                     ></div>
                     {selectedCompany?.isDeleted ? "Đã xóa" : "Hoạt động"}
                   </span>
@@ -584,7 +597,7 @@ const CompanyPage: React.FC = () => {
         <div className="p-6 border-t border-gray-200 flex justify-end">
           <button
             onClick={() => setShowDetailModal(false)}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors hover:cursor-pointer"
           >
             Đóng
           </button>
@@ -622,12 +635,23 @@ const CompanyPage: React.FC = () => {
           </button>
           <button
             onClick={confirmDelete}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors hover:cursor-pointer"
           >
-            Xóa
+            {deleting ? "Đang xóa..." : "Xóa"}
           </button>
         </div>
       </Modal>
+
+      {/* Add/Edit Company Modal */}
+      <CompanyModal
+        isOpen={showAddModal || showEditModal}
+        onClose={() => {
+          setShowAddModal(false);
+          setShowEditModal(false);
+          setSelectedCompany(null);
+        }}
+        company={showEditModal ? selectedCompany : null}
+      />
     </div>
   );
 };

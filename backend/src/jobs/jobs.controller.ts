@@ -26,9 +26,11 @@ export class JobsController {
     @Query('search') search: string = '',
     @Query('companyId') companyId: string = '',
     @Query('skills') skills: string = '',
-    @Query('level') level: string = ''
+    @Query('level') level: string = '',
+    @Query('minSalary') minSalary: string = '0',
+    @Query('maxSalary') maxSalary: string = '100000000'
   ) {
-    return await this.jobsService.findAll(+page, +limit, { search, companyId, skills, level });
+    return await this.jobsService.findAll(+page, +limit, { search, companyId, skills, level, minSalary: +minSalary, maxSalary: +maxSalary });
   }
 
   @Get(':id')

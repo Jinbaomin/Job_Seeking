@@ -75,7 +75,7 @@ const CompanyModal: React.FC<CompanyModalProps> = ({ isOpen, onClose, company })
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Chỉnh sửa công ty' : 'Thêm công ty mới'}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 p-7 max-h-[80vh] overflow-y-auto">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
             Tên công ty *

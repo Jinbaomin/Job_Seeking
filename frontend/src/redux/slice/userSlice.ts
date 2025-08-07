@@ -42,14 +42,14 @@ const initialState: UserState = {
   error: null,
   total: 0,
   currentPage: 1,
-  limit: 10,
+  limit: 5,
   pages: 0,
 };
 
 // Async thunk: lấy danh sách users
 export const fetchUsers = createAsyncThunk(
   'user/fetchUsers',
-  async (params?: { page?: number; limit?: number; search?: string; role?: string }) => {
+  async (params?: { page?: number; limit?: number; search?: string; role?: string, status?: string }) => {
     const response = await callGetUsers(params);
     // console.log(response.data);
     return response.data;

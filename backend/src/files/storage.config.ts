@@ -1,26 +1,41 @@
 import { diskStorage } from "multer";
 import { extname } from "path";
+import * as fs from "fs";
 
 function generateFilename(file) {
-  return `${Date.now()}${extname(file.originalname)}`;
+  const timestamp = Date.now();
+  const extension = extname(file.originalname);
+  const fieldname = file.fieldname || 'file';
+  
+  return `${fieldname}_${timestamp}${extension}`;
 }
 
 export const storage = diskStorage({
   destination: (req, file, callback) => {
-    // Example: choose folder based on file fieldname
-    let uploadPath = './public/images';
+    let uploadPath = './public/images'; // default path
 
-    // if (file.fieldname === 'avatar') {
-    //   uploadPath = './public/avatars';
-    // } else if (file.fieldname === 'document') {
-    //   uploadPath = './public/docs';
-    // }
+    // Split files into different folders based on fieldname or file type
+    if (file.fieldname === 'avatar' || file.fieldname === 'profile') {
+      uploadPath = './public/avatars';
+    } else if (file.fieldname === 'post' || file.fieldname === 'postImage') {
+      uploadPath = './public/posts';
+    } else if (file.fieldname === 'resume' || file.fieldname === 'document') {
+      uploadPath = './public/documents';
+    } else if (file.fieldname === 'video' || file.mimetype.startsWith('video/')) {
+      uploadPath = './public/videos';
+    } else if (file.mimetype.startsWith('image/')) {
+      uploadPath = './public/images';
+    } else if (file.mimetype.startsWith('application/')) {
+      uploadPath = './public/documents';
+    }
 
     // Ensure the directory exists
-    // fs.mkdirSync(uploadPath, { recursive: true });
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
 
     callback(null, uploadPath);
-  }, // Directory where files will be stored
+  },
   filename: (req, file, callback) => {
     callback(null, generateFilename(file));
   }

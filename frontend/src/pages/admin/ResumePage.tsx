@@ -5,16 +5,23 @@ import { useEffect, useState, useMemo } from "react"
 import { useAppDispatch, useAppSelector } from "../../hooks/reduxHooks"
 import { fetchResumes, updateResumeStatus } from "../../redux/slice/resumeSlice"
 import useDebounce from "../../hooks/useDebounce"
+import { useSearchParams } from "react-router-dom"
+import { Pagination } from "antd"
 import Modal from "../../components/common/Modal"
 
 const ResumePage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { resumes, loading, total, currentPage, limit, totalPages } = useAppSelector(state => state.resume);
+  const { resumes, loading, total, totalPages } = useAppSelector(state => state.resume);
 
-  // Filter states
-  const [statusFilter, setStatusFilter] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  // URL search params
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Filter states - sync with URL
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
+  const [companyFilter, setCompanyFilter] = useState(searchParams.get("company") || "");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [currenPage, setCurrentPage] = useState(parseInt(searchParams.get("page") || "1"));
+  const [limit, setLimit] = useState(parseInt(searchParams.get("limit") || "5"));
 
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -25,18 +32,41 @@ const ResumePage: React.FC = () => {
   // Bulk selection
   const [selectedResumes, setSelectedResumes] = useState<string[]>([]);
 
-  const debounceValue = useDebounce(searchTerm, 1000);
+  const debouncedSearchTerm = useDebounce(searchTerm, 1000);
 
-  // Fetch resumes on mount and when filters/page change
+  // Sync URL params with state
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (currenPage > 1) {
+      params.set("page", currenPage.toString());
+    }
+    if (limit !== 5) {
+      params.set("limit", limit.toString());
+    }
+    if (debouncedSearchTerm) {
+      params.set("search", debouncedSearchTerm);
+    }
+    if (statusFilter) {
+      params.set("status", statusFilter);
+    }
+    if (companyFilter) {
+      params.set("company", companyFilter);
+    }
+
+    setSearchParams(params);
+  }, [currenPage, limit, debouncedSearchTerm, statusFilter, companyFilter, setSearchParams]);
+
+  // Fetch resumes when filters/page change
   useEffect(() => {
     dispatch(fetchResumes({
-      page: currentPage,
+      page: currenPage,
       limit: limit,
-      status: statusFilter || '',
-      companyId: companyFilter || '',
-      query: debounceValue || '',
+      status: statusFilter || undefined,
+      companyId: companyFilter || undefined,
+      query: debouncedSearchTerm || undefined,
     }));
-  }, [dispatch, currentPage, limit, statusFilter, companyFilter, debounceValue]);
+  }, [dispatch, currenPage, limit, statusFilter, companyFilter, debouncedSearchTerm]);
 
   // Get unique companies for filter
   const companies = useMemo(() => {
@@ -51,7 +81,7 @@ const ResumePage: React.FC = () => {
 
   // Pagination
   const paginatedResumes = resumes;
-  const startIndex = (currentPage - 1) * limit;
+  const startIndex = (currenPage - 1) * limit;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -178,8 +208,12 @@ const ResumePage: React.FC = () => {
     setStatusFilter("");
     setCompanyFilter("");
     setSearchTerm("");
-    // Optionally reset page
-    // dispatch(setCurrentPage(1));
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number, pageSize: number) => {
+    setCurrentPage(page);
+    setLimit(pageSize);
   };
 
   const StatCard = ({
@@ -560,7 +594,7 @@ const ResumePage: React.FC = () => {
                                 rel="noopener noreferrer"
                                 className="text-green-600 hover:text-green-800 font-medium text-sm transition-colors"
                               >
-                                Tải CV
+                                Xem CV
                               </a>
                             </div>
 
@@ -627,36 +661,17 @@ const ResumePage: React.FC = () => {
                     <div className="text-sm text-gray-700">
                       Hiển thị {startIndex + 1} đến {Math.min(startIndex + limit, total)} trong tổng số {total} đơn ứng tuyển
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => dispatch(fetchResumes({ page: Math.max(1, currentPage - 1), limit, status: statusFilter || undefined, companyId: companyFilter || undefined, query: searchTerm || undefined }))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Trước
-                      </button>
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => dispatch(fetchResumes({ page, limit, status: statusFilter || '', companyId: companyFilter || '', query: searchTerm || '' }))}
-                          className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "text-gray-500 bg-white border border-gray-300 hover:bg-gray-50"
-                            }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-
-                      <button
-                        onClick={() => dispatch(fetchResumes({ page: Math.min(totalPages, currentPage + 1), limit, status: statusFilter || '', companyId: companyFilter || '', query: searchTerm || '' }))}
-                        disabled={currentPage === totalPages}
-                        className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Sau
-                      </button>
-                    </div>
+                    <Pagination
+                      current={currenPage}
+                      total={total}
+                      pageSize={limit}
+                      showSizeChanger
+                      showQuickJumper
+                      showTotal={(total, range) => `${range[0]}-${range[1]} của ${total} đơn ứng tuyển`}
+                      onChange={handlePageChange}
+                      onShowSizeChange={handlePageChange}
+                      pageSizeOptions={['5', '10', '20', '50']}
+                    />
                   </div>
                 </div>
               )}
@@ -668,98 +683,98 @@ const ResumePage: React.FC = () => {
       {/* Resume Detail Modal */}
       <Modal isOpen={showDetailModal && selectedResume} onClose={() => setShowDetailModal(false)} maxWidth="max-w-2xl">
         {/* <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"> */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
-                {selectedResume?.userId?.avatar ? (
-                  <img
-                    src={selectedResume?.userId?.avatar || "/placeholder.svg"}
-                    alt={selectedResume?.userId?.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                    {selectedResume?.userId?.name ? selectedResume?.userId?.name?.charAt(0) : "?"}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">{selectedResume?.userId?.name}</h3>
-                <p className="text-gray-600">{selectedResume?.userId?.email}</p>
-                <span
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border mt-2 ${getStatusColor(selectedResume?.status)}`}
-                >
-                  {getStatusIcon(selectedResume?.status)}
-                  <span className="ml-1">{getStatusText(selectedResume?.status)}</span>
-                </span>
-              </div>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+              {selectedResume?.userId?.avatar ? (
+                <img
+                  src={selectedResume?.userId?.avatar || "/placeholder.svg"}
+                  alt={selectedResume?.userId?.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
+                  {selectedResume?.userId?.name ? selectedResume?.userId?.name?.charAt(0) : "?"}
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">{selectedResume?.userId?.name}</h3>
+              <p className="text-gray-600">{selectedResume?.userId?.email}</p>
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border mt-2 ${getStatusColor(selectedResume?.status)}`}
+              >
+                {getStatusIcon(selectedResume?.status)}
+                <span className="ml-1">{getStatusText(selectedResume?.status)}</span>
+              </span>
             </div>
           </div>
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Thông tin ứng tuyển</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"
-                      />
-                    </svg>
-                    <span className="font-medium">Vị trí:</span>
-                    <span className="ml-2">{selectedResume?.jobId?.name}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                      />
-                    </svg>
-                    <span className="font-medium">Công ty:</span>
-                    <span className="ml-2">{selectedResume?.companyId?.name}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1V8a1 1 0 011-1h3z"
-                      />
-                    </svg>
-                    <span className="font-medium">Ngày ứng tuyển:</span>
-                    <span className="ml-2">{formatDate(selectedResume?.createdAt)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                    <span className="font-medium">Cập nhật cuối:</span>
-                    <span className="ml-2">{formatDate(selectedResume?.updatedAt)}</span>
-                  </div>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Thông tin ứng tuyển</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H8a2 2 0 01-2-2V8a2 2 0 012-2V6"
+                    />
+                  </svg>
+                  <span className="font-medium">Vị trí:</span>
+                  <span className="ml-2">{selectedResume?.jobId?.name}</span>
+                </div>
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                  <span className="font-medium">Công ty:</span>
+                  <span className="ml-2">{selectedResume?.companyId?.name}</span>
+                </div>
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1V8a1 1 0 011-1h3z"
+                    />
+                  </svg>
+                  <span className="font-medium">Ngày ứng tuyển:</span>
+                  <span className="ml-2">{formatDate(selectedResume?.createdAt)}</span>
+                </div>
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  <span className="font-medium">Cập nhật cuối:</span>
+                  <span className="ml-2">{formatDate(selectedResume?.updatedAt)}</span>
                 </div>
               </div>
+            </div>
 
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3">Kỹ năng</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedResume?.jobId?.skills?.map((skill: string, index: number) => (
-                    <span key={index} className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
-                      {skill}
-                    </span>
-                  ))}
-                </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Kỹ năng</h4>
+              <div className="flex flex-wrap gap-2">
+                {selectedResume?.jobId?.skills?.map((skill: string, index: number) => (
+                  <span key={index} className="px-3 py-1 text-sm bg-blue-100 text-blue-800 rounded-full">
+                    {skill}
+                  </span>
+                ))}
+              </div>
               {/* </div> */}
             </div>
 
@@ -946,40 +961,40 @@ const ResumePage: React.FC = () => {
       {/* Status Update Confirmation Modal */}
       <Modal isOpen={showStatusModal} onClose={() => setShowStatusModal(false)}>
         {/* <div className="bg-white rounded-xl shadow-xl max-w-lg w-full"> */}
-          <div className="p-6">
-            <div className="flex items-center mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">Xác nhận cập nhật trạng thái</h3>
-                <p className="text-sm text-gray-600">
-                  Bạn có chắc chắn muốn cập nhật trạng thái đơn ứng tuyển thành "{getStatusText(newStatus)}"?
-                </p>
-              </div>
+        <div className="p-6">
+          <div className="flex items-center mb-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </div>
+            <div className="ml-4">
+              <h3 className="text-lg font-semibold text-gray-900">Xác nhận cập nhật trạng thái</h3>
+              <p className="text-sm text-gray-600">
+                Bạn có chắc chắn muốn cập nhật trạng thái đơn ứng tuyển thành "{getStatusText(newStatus)}"?
+              </p>
             </div>
           </div>
-          <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-            <button
-              onClick={() => setShowStatusModal(false)}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={confirmStatusUpdate}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Xác nhận
-            </button>
-          </div>
+        </div>
+        <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
+          <button
+            onClick={() => setShowStatusModal(false)}
+            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Hủy
+          </button>
+          <button
+            onClick={confirmStatusUpdate}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors hover:cursor-pointer"
+          >
+            Xác nhận
+          </button>
+        </div>
         {/* </div> */}
       </Modal>
       {/* {showStatusModal && (

@@ -34,15 +34,15 @@ export class CompaniesService {
 
     const [result, count] = await Promise.all([
       this.companyModel.find(filter).skip((page - 1) * limit).limit(limit),
-      this.companyModel.countDocuments({ isDeleted: false })
+      this.companyModel.find(filter)
     ]);
 
     return {
       meta: {
         currentPage: page,
         pageSize: limit,
-        pages: Math.ceil(count / limit),
-        total: count,
+        pages: Math.ceil(count.length / limit),
+        total: count.length,
       },
       result
     };

@@ -22,7 +22,7 @@ export class JobsService {
         _id: user._id,
         email: user.email,
       }
-    });
+    }).then(job => job.populate('companyId'));
   }
 
   async findAll(page: number, limit: number, query: Object) {
@@ -43,8 +43,17 @@ export class JobsService {
     const pipeline: any[] = [];
 
     pipeline.push(
-      { $skip: (page - 1) * limit },
-      { $limit: limit },
+      { $match: { isDeleted: false } }, // filter out soft-deleted jobs
+      { 
+        $match: { 
+          $and: [
+            { 'salary': { $gt: query['minSalary'] } },
+            { 'salary': { $lt: query['maxSalary'] } }
+          ] 
+        } 
+      },
+      // { $skip: (page - 1) * limit },
+      // { $limit: limit },
       { $lookup: { from: 'companies', localField: 'companyId', foreignField: '_id', as: 'company' } },
       { $unwind: '$company' },
     );
@@ -52,7 +61,11 @@ export class JobsService {
     if (query['search']) {
       pipeline.push({
         $match: {
-          name: { $regex: query['search'], $options: 'i' } // case-insensitive search
+          $or: [
+            { name: { $regex: query['search'], $options: 'i' } }, // case-insensitive search
+            { 'company.name': { $regex: query['search'], $options: 'i' } }, // case-insensitive search
+            { skills: { $regex: query['search'], $options: 'i' } } // This works for array of strings!
+          ]
         }
       });
     }
@@ -82,16 +95,17 @@ export class JobsService {
     }
 
     const [companies, count] = await Promise.all([
+      this.jobModel.aggregate(pipeline).skip((page - 1) * limit).limit(limit),
+      // this.jobModel.countDocuments()
       this.jobModel.aggregate(pipeline),
-      this.jobModel.countDocuments()
     ]);
 
     return {
       meta: {
         currentPage: page,
         pageSize: limit,
-        pages: Math.ceil(count / limit),
-        total: count,
+        pages: Math.ceil(count.length / limit),
+        total: count.length,
       },
       result: companies.map(company => {
         return {
@@ -114,7 +128,7 @@ export class JobsService {
         _id: user._id,
         email: user.email,
       }
-    }, { new: true });
+    }, { new: true }).populate('companyId').select('-__v');
 
     return job;
   }

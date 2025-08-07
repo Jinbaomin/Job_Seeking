@@ -45,7 +45,7 @@ interface JobState {
   total: number;
   currentPage: number;
   limit: number;
-  totalPages: number;
+  pages: number;
 }
 
 const initialState: JobState = {
@@ -58,15 +58,16 @@ const initialState: JobState = {
   error: null,
   total: 0,
   currentPage: 1,
-  limit: 10,
-  totalPages: 0,
+  limit: 5,
+  pages: 0,
 };
 
 // Async thunk: lấy danh sách jobs
 export const fetchJobs = createAsyncThunk(
   'job/fetchJobs',
-  async (params?: { page?: number; limit?: number; search?: string; skills?: string; companyId?: string; level?: string }) => {
+  async (params?: { page?: number; limit?: number; search?: string; skills?: string; companyId?: string; level?: string, minSalary?: string, maxSalary?: string }) => {
     const response = await callGetJobs(params);
+    // console.log(response.data);
     return response.data;
   }
 );
@@ -134,7 +135,7 @@ const jobSlice = createSlice({
         state.total = action.payload.data.meta.total;
         state.currentPage = action.payload.data.meta.currentPage;
         state.limit = action.payload.data.meta.pageSize;
-        state.totalPages = action.payload.data.meta.pages;
+        state.pages = action.payload.data.meta.pages;
       })
       .addCase(fetchJobs.rejected, (state, action) => {
         state.loading = false;

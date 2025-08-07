@@ -64,7 +64,7 @@ const LoginPage: React.FC = () => {
           />
           {errorMsg && <div className="text-red-500 mb-2">{errorMsg}</div>}
           <div className="w-full mt-2 flex justify-center">
-            <Button type="submit" disabled={loading}>
+            <Button className='text-white' type="submit" disabled={loading}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>
           </div>

@@ -9,6 +9,9 @@ import { fetchCompanies  } from '../../redux/slice/companySlice';
 interface JobModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: () => void;
+  // companies: any;
+  skills: any;
   job?: {
     _id: string;
     name: string;
@@ -115,8 +118,8 @@ const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, job }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditMode ? 'Chỉnh sửa việc làm' : 'Thêm việc làm mới'}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen={isOpen} maxWidth='max-w-xl' onClose={onClose} title={isEditMode ? 'Chỉnh sửa việc làm' : 'Thêm việc làm mới'}>
+      <form onSubmit={handleSubmit} className="space-y-4 p-7 max-h-[80vh] overflow-y-auto">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
             Tên việc làm *
@@ -181,6 +184,8 @@ const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, job }) => {
               onChange={handleInputChange}
               placeholder="Nhập số lượng"
               required
+              autoComplete='off'
+              spellCheck={false}
             />
           </div>
         </div>
@@ -200,10 +205,8 @@ const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, job }) => {
             <option value="Intern">Intern</option>
             <option value="Fresher">Fresher</option>
             <option value="Junior">Junior</option>
-            <option value="Middle">Middle</option>
+            <option value="Mid-level">Mid-level</option>
             <option value="Senior">Senior</option>
-            <option value="Lead">Lead</option>
-            <option value="Manager">Manager</option>
           </select>
         </div>
 
@@ -291,7 +294,7 @@ const JobModal: React.FC<JobModalProps> = ({ isOpen, onClose, job }) => {
           </Button>
           <Button
             type="submit"
-            className="bg-blue-600 text-white hover:bg-blue-700"
+            className={`bg-blue-600 text-white hover:bg-blue-700 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={loading}
           >
             {loading ? 'Đang lưu...' : (isEditMode ? 'Cập nhật' : 'Thêm mới')}

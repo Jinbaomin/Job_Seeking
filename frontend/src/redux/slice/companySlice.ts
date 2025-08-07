@@ -29,6 +29,8 @@ interface CompanyState {
   companies: Company[];
   currentCompany: Company | null;
   loading: boolean;
+  updating: boolean;
+  deleting: boolean;
   error: string | null;
   total: number;
   currentPage: number;
@@ -40,10 +42,12 @@ const initialState: CompanyState = {
   companies: [],
   currentCompany: null,
   loading: false,
+  updating: false,
+  deleting: false,
   error: null,
   total: 0,
   currentPage: 1,
-  limit: 10,
+  limit: 5,
   totalPages: 0,
 };
 
@@ -143,7 +147,7 @@ const companySlice = createSlice({
       .addCase(createCompany.fulfilled, (state, action) => {
         state.loading = false;
         // Add new company to the list
-        state.companies.unshift(action.payload.data);
+        state.companies.push(action.payload.data);
         state.total += 1;
       })
       .addCase(createCompany.rejected, (state, action) => {
@@ -152,11 +156,11 @@ const companySlice = createSlice({
       })
       // Update company
       .addCase(updateCompany.pending, (state) => {
-        state.loading = true;
+        state.updating = true;
         state.error = null;
       })
       .addCase(updateCompany.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updating = false;
         // Update company in list if exists
         const updatedCompany = action.payload.data;
         const index = state.companies.findIndex(company => company._id === updatedCompany._id);
@@ -169,16 +173,16 @@ const companySlice = createSlice({
         }
       })
       .addCase(updateCompany.rejected, (state, action) => {
-        state.loading = false;
+        state.updating = false;
         state.error = action.error.message || 'Failed to update company';
       })
       // Delete company
       .addCase(deleteCompany.pending, (state) => {
-        state.loading = true;
+        state.deleting = true;
         state.error = null;
       })
       .addCase(deleteCompany.fulfilled, (state, action) => {
-        state.loading = false;
+        state.deleting = false;
         // Remove company from list
         state.companies = state.companies.filter(company => company._id !== action.payload.id);
         state.total -= 1;
@@ -188,7 +192,7 @@ const companySlice = createSlice({
         }
       })
       .addCase(deleteCompany.rejected, (state, action) => {
-        state.loading = false;
+        state.deleting = false;
         state.error = action.error.message || 'Failed to delete company';
       });
   },

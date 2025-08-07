@@ -13,6 +13,8 @@ import { JobsModule } from './jobs/jobs.module';
 import { FilesModule } from './files/files.module';
 import { ResumesModule } from './resumes/resumes.module';
 import { AiModule } from './ai/ai.module';
+import { PostsModule } from './posts/posts.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { AiModule } from './ai/ai.module';
     FilesModule,
     ResumesModule,
     AiModule,
+    PostsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService,

@@ -1,17 +1,23 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable } from '@nestjs/common';
+import OpenAI from 'openai';
 
 @Injectable()
 export class AiService {
   private readonly modelAI;
 
+  private openai;
+
   constructor() {
-    const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('Google Generative AI API key is not set in environment variables.');
     }
     const genAI = new GoogleGenerativeAI(apiKey);
     this.modelAI = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
   }
 
   private extractText(response: any): string {
@@ -20,6 +26,33 @@ export class AiService {
     } catch {
       throw new Error('Failed to extract text from AI response.');
     }
+  }
+
+  async generateDataWithOpenAI(question: string) {
+    const prompt = `Bạn giúp tôi trả lời câu hỏi sau: ${question}. Trả lời dưới dạng 1 đoạn văn khoảng 7 câu và không giải thích gì thêm dưới dạng markdown. 
+    Lưu ý nếu câu hỏi không liên quan gì đến ngôn ngữ lập trình (như C++, Java, C#, Python, golang, ...), thư viện, framework và công nghệ thông tin nói chung. Chỉ trả về json dưới dạng sau: 
+    {
+      content: "Câu hỏi không liên quan đến lĩnh vực công nghệ thông tin.",
+      analysis: []
+    }
+    Nếu như câu hỏi có liên quan hãy giúp tôi phân tích những framework có trong câu trả lời đó và trả về chính xác dưới dạng json theo định dạng sau:
+    {
+      content: "Nội dung câu trả lời",
+      analysis: [
+        "Framework 1",
+        "Framework 2",
+        "Framework 3",
+        ...
+      ]
+    }
+    `;
+
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{role: 'user', content: question}]
+    });
+
+    return response;
   }
 
   async generateData(question: string): Promise<{ content: string; analysis?: string[] }> {

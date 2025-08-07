@@ -20,8 +20,8 @@ export class CompaniesController {
   @Public()
   @ResponseMessage('Get all companies successfully')
   async findAll(
-    @Query('current') page: string = '1',
-    @Query('pageSize') limit: string = '5',
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '5',
     @Query('search') search: string
   ) {
     return await this.companiesService.findAll(+page, +limit, { search });

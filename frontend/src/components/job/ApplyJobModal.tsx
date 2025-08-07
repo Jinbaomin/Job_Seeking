@@ -47,8 +47,7 @@ const ApplyJobModal: React.FC<ApplyJobModalProps> = ({
     setError('');
 
     try {
-      const { data } = await callFileUpload(jobId, selectedFile);
-      console.log(data);
+      const { data } = await callFileUpload(selectedFile, 'resume');
 
       await callCreateResume({ url: data.data.fileName, jobId, companyId });
 

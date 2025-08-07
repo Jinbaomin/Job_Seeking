@@ -1,0 +1,77 @@
+[
+  {
+    "content": "Just finished an amazing coding session! Built a full-stack application using React and Node.js. The feeling when everything works perfectly is indescribable! 🚀 #coding #webdev #react #nodejs",
+    "images": [
+      "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=500",
+      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=500"
+    ],
+    "tags": ["coding", "webdev", "react", "nodejs", "programming"]
+  },
+  {
+    "content": "Attended an incredible tech conference today! Learned so much about AI and machine learning. The future of technology is here and it's absolutely mind-blowing! 🤖 #AI #ML #tech #conference",
+    "images": [
+      "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=500",
+      "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=500"
+    ],
+    "tags": ["AI", "machine-learning", "tech", "conference", "innovation"]
+  },
+  {
+    "content": "Finally got my dream job as a Senior Software Engineer! After months of preparation and countless interviews, the hard work paid off. Never give up on your dreams! 💪 #career #success #software #engineering",
+    "images": [
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500"
+    ],
+    "tags": ["career", "success", "software", "engineering", "job"]
+  },
+  {
+    "content": "Working from home has its perks! My new setup is finally complete. Dual monitors, mechanical keyboard, and a cozy workspace. Productivity level: MAXIMUM! 🏠 #wfh #setup #productivity",
+    "images": [
+      "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500",
+      "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=500"
+    ],
+    "tags": ["wfh", "setup", "productivity", "workspace", "remote"]
+  },
+  {
+    "content": "Just deployed my first open-source project to GitHub! It's a simple but useful tool for developers. Open source is the future of software development. 🌟 #opensource #github #developer #project",
+    "images": [
+      "https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?w=500"
+    ],
+    "tags": ["opensource", "github", "developer", "project", "coding"]
+  },
+  {
+    "content": "Team building day was a blast! Great food, fun activities, and amazing colleagues. These moments remind me why I love working with such talented people! 🎉 #teambuilding #colleagues #fun #work",
+    "images": [
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500",
+      "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=500"
+    ],
+    "tags": ["teambuilding", "colleagues", "fun", "work", "team"]
+  },
+  {
+    "content": "Learning TypeScript has been a game-changer for my development workflow. The type safety and better IDE support are incredible! Highly recommend for any JavaScript developer. 📘 #typescript #javascript #learning #development",
+    "images": [
+      "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=500"
+    ],
+    "tags": ["typescript", "javascript", "learning", "development", "programming"]
+  },
+  {
+    "content": "Coffee and code - the perfect combination for a productive morning! ☕️ Sometimes the simplest things bring the most joy. What's your morning routine? #coffee #coding #morning #routine",
+    "images": [
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500"
+    ],
+    "tags": ["coffee", "coding", "morning", "routine", "productivity"]
+  },
+  {
+    "content": "Just completed a challenging bug fix that had me stuck for hours! The satisfaction of finally solving it is unmatched. Debugging is an art form! 🔧 #debugging #problem-solving #coding #satisfaction",
+    "images": [
+      "https://images.unsplash.com/photo-1551434678-e076c223a692?w=500"
+    ],
+    "tags": ["debugging", "problem-solving", "coding", "satisfaction", "development"]
+  },
+  {
+    "content": "Weekend hackathon was incredible! Built a real-time chat application in just 24 hours. The energy and creativity were off the charts! 💻 #hackathon #innovation #coding #weekend",
+    "images": [
+      "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=500",
+      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=500"
+    ],
+    "tags": ["hackathon", "innovation", "coding", "weekend", "real-time"]
+  }
+] 

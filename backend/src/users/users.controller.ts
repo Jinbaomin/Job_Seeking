@@ -22,11 +22,13 @@ export class UsersController {
   @ResponseMessage('Get all users successfully')
   // @UseGuards(TestGuard) // Apply the TestGuard to this route
   findAll(
-    @Query('current') page: string = '1',
-    @Query('pageSize') limit: string = '5',
-    @Query('name') name: string
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '5',
+    @Query('search') search: string,
+    @Query('status') status: string,
+    @Query('role') role: string
   ) {
-    return this.usersService.findAll(+page, +limit);
+    return this.usersService.findAll(+page, +limit, search, status, role);
   }
 
   @ResponseMessage('Change password successfully')

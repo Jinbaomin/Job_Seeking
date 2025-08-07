@@ -8,11 +8,94 @@ import { callChangePassword, callUpdateUser } from "../../config/api"
 import { fetchAccount } from "../../redux/slice/accountSlice"
 import MainLayout from "../../components/layout/MainLayout"
 
+
+// Skeleton Components
+const ProfileCardSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    {/* Profile Header Skeleton */}
+    <div className="bg-gradient-to-r from-blue-500 to-purple-600 h-32 relative">
+      <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
+        <div className="w-32 h-32 bg-white rounded-full p-2 shadow-lg">
+          <div className="w-full h-full rounded-full bg-gray-200 animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Profile Info Skeleton */}
+    <div className="pt-20 pb-6 px-6 text-center">
+      <div className="h-8 bg-gray-200 rounded-lg animate-pulse mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-lg animate-pulse mb-6"></div>
+      
+      {/* Action Buttons Skeleton */}
+      <div className="space-y-3">
+        <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+        <div className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+      </div>
+    </div>
+  </div>
+)
+
+const InfoCardSkeleton = () => (
+  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="px-6 py-4 border-b border-gray-100">
+      <div className="h-6 bg-gray-200 rounded-lg animate-pulse mb-2"></div>
+      <div className="h-4 bg-gray-200 rounded-lg animate-pulse w-2/3"></div>
+    </div>
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i}>
+              <div className="h-4 bg-gray-200 rounded-lg animate-pulse mb-2"></div>
+              <div className="h-5 bg-gray-200 rounded-lg animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i}>
+              <div className="h-4 bg-gray-200 rounded-lg animate-pulse mb-2"></div>
+              <div className="h-5 bg-gray-200 rounded-lg animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+)
+
+const ProfilePageSkeleton = () => (
+  <MainLayout>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Skeleton */}
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 rounded-lg animate-pulse mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded-lg animate-pulse w-3/4"></div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Profile Card Skeleton */}
+          <div className="lg:col-span-1">
+            <ProfileCardSkeleton />
+          </div>
+
+          {/* Right Column - Main Content Skeleton */}
+          <div className="lg:col-span-2 space-y-8">
+            <InfoCardSkeleton />
+            <InfoCardSkeleton />
+          </div>
+        </div>
+      </div>
+    </div>
+  </MainLayout>
+)
+
 const ProfilePage: React.FC = () => {
   // Use Redux accountSlice for user data
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.account.user)
-  // const dispatch = useAppDispatch()
+  const loading = useAppSelector((state) => state.account.loading)
 
   // State cho modal đổi mật khẩu
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -21,7 +104,7 @@ const ProfilePage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [loading, setLoading] = useState(false)
+  // const [loading, setLoading] = useState(false)
 
   // State show/hide password
   const [showOld, setShowOld] = useState(false)
@@ -47,6 +130,11 @@ const ProfilePage: React.FC = () => {
   const [showNotification, setShowNotification] = useState(false)
 
   useEffect(() => {
+    // Fetch user data if not already loaded
+    if (!user && !loading) {
+      dispatch(fetchAccount())
+    }
+
     if (user) {
       setEditForm({
         name: user.name || "",
@@ -58,7 +146,24 @@ const ProfilePage: React.FC = () => {
       })
       setAvatarPreview(user.avatar || "")
     }
-  }, [user])
+  }, [user, loading, dispatch])
+
+  // Show skeleton while loading
+  if (!user && !loading) {
+    return <ProfilePageSkeleton />
+  }
+
+  // Show error state if no user and not loading
+  if (!user && !loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse mx-auto mb-4"></div>
+          <p className="text-gray-500">Đang tải thông tin người dùng...</p>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "";
@@ -142,7 +247,7 @@ const ProfilePage: React.FC = () => {
       return
     }
 
-    setLoading(true)
+    // setLoading(true)
     try {
       // Simulate API call
       // await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -159,7 +264,7 @@ const ProfilePage: React.FC = () => {
     } catch (err: any) {
       setError("Đổi mật khẩu thất bại")
     } finally {
-      setLoading(false)
+      // setLoading(false)
     }
   }
 
@@ -191,16 +296,7 @@ const ProfilePage: React.FC = () => {
     </div>
   )
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse mx-auto mb-4"></div>
-          <p className="text-gray-500">Đang tải thông tin người dùng...</p>
-        </div>
-      </div>
-    )
-  }
+  
 
   return (
     <MainLayout>
@@ -236,12 +332,12 @@ const ProfilePage: React.FC = () => {
                         {avatarPreview ? (
                           <img
                             src={avatarPreview || "/placeholder.svg"}
-                            alt={user.name}
+                            alt={user?.name}
                             className="w-full h-full rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
-                            {user.name.charAt(0)}
+                            {user?.name.charAt(0)}
                           </div>
                         )}
                       </div>
@@ -268,8 +364,8 @@ const ProfilePage: React.FC = () => {
 
                 {/* Profile Info */}
                 <div className="pt-20 pb-6 px-6 text-center">
-                  <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
-                  <p className="text-gray-600 mt-1">{user.email}</p>
+                  <h2 className="text-2xl font-bold text-gray-900">{user?.name}</h2>
+                  <p className="text-gray-600 mt-1">{user?.email}</p>
 
                   {/* Profile Completion */}
                   {/* <div className="mt-6">
@@ -340,7 +436,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Họ và tên
                         </label>
-                        <p className="text-gray-900 font-medium">{user.name}</p>
+                        <p className="text-gray-900 font-medium">{user?.name}</p>
                       </div>
                       <div>
                         <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
@@ -359,7 +455,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Email
                         </label>
-                        <p className="text-gray-900 font-medium">{user.email}</p>
+                        <p className="text-gray-900 font-medium">{user?.email}</p>
                       </div>
                       <div>
                         <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
@@ -378,7 +474,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Số điện thoại
                         </label>
-                        <p className="text-gray-900 font-medium">{user.phone || ''}</p>
+                        <p className="text-gray-900 font-medium">{user?.phone || ''}</p>
                       </div>
                     </div>
                     <div className="space-y-4">
@@ -399,7 +495,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Tuổi
                         </label>
-                        <p className="text-gray-900 font-medium">{user.age ? `${user.age} tuổi` : ''}</p>
+                        <p className="text-gray-900 font-medium">{user?.age ? `${user?.age} tuổi` : ''}</p>
                       </div>
                       <div>
                         <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
@@ -419,7 +515,7 @@ const ProfilePage: React.FC = () => {
                           Giới tính
                         </label>
                         <p className="text-gray-900 font-medium">
-                          {user.gender === "Male" ? "Nam" : user.gender === "Female" ? "Nữ" : user.gender || "Khác"}
+                          {user?.gender === "Male" ? "Nam" : user?.gender === "Female" ? "Nữ" : user?.gender || "Khác"}
                         </p>
                       </div>
                       <div>
@@ -445,7 +541,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Địa chỉ
                         </label>
-                        <p className="text-gray-900 font-medium">{user.address || ''}</p>
+                        <p className="text-gray-900 font-medium">{user?.address || ''}</p>
                       </div>
                     </div>
                   </div>
@@ -478,7 +574,7 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           ID người dùng
                         </label>
-                        <p className="text-gray-900 font-mono text-sm bg-gray-50 px-3 py-2 rounded-lg">{user._id}</p>
+                        <p className="text-gray-900 font-mono text-sm bg-gray-50 px-3 py-2 rounded-lg">{user?._id}</p>
                       </div>
                       {/* <div>
                       <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
@@ -518,9 +614,9 @@ const ProfilePage: React.FC = () => {
                           </svg>
                           Trạng thái tài khoản
                         </label>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${user.isDeleted ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
-                          <div className={`w-2 h-2 ${user.isDeleted ? "bg-red-500" : "bg-green-500"} rounded-full mr-2`}></div>
-                          {user.isDeleted ? "Đã xóa" : "Hoạt động"}
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${user?.isDeleted ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}`}>
+                          <div className={`w-2 h-2 ${user?.isDeleted ? "bg-red-500" : "bg-green-500"} rounded-full mr-2`}></div>
+                          {user?.isDeleted ? "Đã xóa" : "Hoạt động"}
                         </span>
                       </div>
                       {/* <div>

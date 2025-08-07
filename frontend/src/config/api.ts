@@ -14,7 +14,7 @@ export const callFetchAccount = () => {
 };
 
 // Job APIs
-export const callGetJobs = (params?: { page?: number; limit?: number; search?: string; skills?: string; companyId?: string; level?: string }) => {
+export const callGetJobs = (params?: { page?: number; limit?: number; search?: string; skills?: string; companyId?: string; level?: string, minSalary?: string, maxSalary?: string }) => {
   return axios.get('/jobs', { params });
 };
 
@@ -56,7 +56,7 @@ export const callDeleteCompany = (id: string) => {
 };
 
 // User APIs
-export const callGetUsers = (params?: { page?: number; limit?: number; search?: string; role?: string }) => {
+export const callGetUsers = (params?: { page?: number; limit?: number; search?: string; role?: string, status?: string }) => {
   return axios.get('/users', { params });
 };
 
@@ -122,10 +122,10 @@ export const callUploadFile = (file: File, type: string = 'resume') => {
 };
 
 // File Upload APIs
-export const callFileUpload = (jobId: string, file: File) => {
+export const callFileUpload = (file: File, type: string) => {
   const formData = new FormData();
   // formData.append('jobId', jobId);
-  formData.append('fileUpload', file);
+  formData.append(type, file);
   return axios.post('/files/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
@@ -146,4 +146,62 @@ export const sendChatMessage = (
     headers: {
       'Content-Type': 'application/json',
     },
-  }); 
+  });
+
+// Post APIs
+export const callGetPosts = (params?: { page?: number; limit?: number }) => {
+  return axios.get('/posts', { params });
+};
+
+export const callGetPostById = (id: string) => {
+  return axios.get(`/posts/${id}`);
+};
+
+export const callCreatePost = (data: { content: string; images?: string[]; tags?: string[] }) => {
+  return axios.post('/posts', data);
+};
+
+export const callUpdatePost = (id: string, data: Partial<{ content: string; images?: string[]; tags?: string[] }>) => {
+  return axios.patch(`/posts/${id}`, data);
+};
+
+export const callDeletePost = (id: string) => {
+  return axios.delete(`/posts/${id}`);
+};
+
+export const callLikePost = (id: string) => {
+  return axios.post(`/posts/${id}/like`);
+};
+
+// Comment APIs
+export const callGetComments = (params?: { page?: number; limit?: number }) => {
+  return axios.get('/comments', { params });
+};
+
+export const callGetCommentsByPostId = (postId: string, params?: { page?: number; limit?: number }) => {
+  return axios.get(`/comments/post/${postId}`, { params });
+};
+
+export const callGetCommentById = (id: string) => {
+  return axios.get(`/comments/${id}`);
+};
+
+export const callCreateComment = (data: { content: string; postId: string; parentCommentId?: string }) => {
+  return axios.post('/comments', data);
+};
+
+export const callUpdateComment = (id: string, data: Partial<{ content: string }>) => {
+  return axios.patch(`/comments/${id}`, data);
+};
+
+export const callDeleteComment = (id: string) => {
+  return axios.delete(`/comments/${id}`);
+};
+
+export const callLikeComment = (id: string) => {
+  return axios.post(`/comments/${id}/like`);
+};
+
+export const callReplyComment = (id: string, data: { content: string }) => {
+  return axios.post(`/comments/${id}/reply`, data);
+}; 
